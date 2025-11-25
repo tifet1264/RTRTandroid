@@ -1,0 +1,25 @@
+<resources>
+    <string name="app_name">My Budget App</string>
+    <string name="receipts_page">My Receipts</string>
+    <string name="editor_page">Dictionary Editor</string>
+    <string name="manual_add">Manual Add</string>
+    <string name="add">Add</string>
+    <string name="cancel">Cancel</string>
+    <string name="enter_item_name">Enter item name</string>
+    <string name="total_income">Total Income</string>
+    <string name="total_expense">Total Expense</string>
+    <string name="add_new_item">Add New Item</string>
+    <string name="item_name">Item Name</string>
+    <string name="min_price">Min Price</string>
+    <string name="max_price">Max Price</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+    <string name="ad_placeholder">Banner Ad Area</string>
+    <string name="income">Income</string>
+    <string name="expense">Expense</string>
+    <string name="edit">Edit</string>
+    <string name="back_to_main">Back</string>
+    <string name="dictionary_editor">Edit dictionary</string>
+    <string name="toggle_theme">switch theme</string>
+    <string name="toggle_language">switch language</string>
+</resources>

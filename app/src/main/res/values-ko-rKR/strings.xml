@@ -1,0 +1,25 @@
+<resources>
+    <string name="app_name">나의 가계부</string>
+    <string name="receipts_page">나의 영수증</string>
+    <string name="editor_page">항목 사전 편집</string>
+    <string name="manual_add">수동 추가</string>
+    <string name="add">추가</string>
+    <string name="cancel">취소</string>
+    <string name="enter_item_name">항목 이름을 입력하세요</string>
+    <string name="total_income">총 수입</string>
+    <string name="total_expense">총 지출</string>
+    <string name="add_new_item">새 항목 추가</string>
+    <string name="item_name">항목 이름</string>
+    <string name="min_price">최소 가격</string>
+    <string name="max_price">최대 가격</string>
+    <string name="save">저장</string>
+    <string name="delete">삭제</string>
+    <string name="ad_placeholder">배너 광고 영역</string>
+    <string name="income">수입</string>
+    <string name="expense">지출</string>
+    <string name="edit">수정</string>
+    <string name="back_to_main">메인 화면으로</string>
+    <string name="dictionary_editor">사전 편집</string>
+    <string name="toggle_theme">테마 변경</string>
+    <string name="toggle_language">언어 변경</string>
+</resources>
