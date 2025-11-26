@@ -1,5 +1,7 @@
 package com.example.myapplication
 
+
+import android.app.Activity
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Bundle
@@ -50,6 +52,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings // 딕셔너리 편집 아이콘
 import androidx.compose.material.icons.filled.BrightnessMedium // 테마 변경 아이콘
 import androidx.compose.material.icons.filled.Translate // 언어 변경 아이콘
+import androidx.lifecycle.AndroidViewModel // ViewModel 대신 이걸로 변경
+import android.app.Application
+import androidx.core.app.ActivityCompat.recreate
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+
 
 
 // --- 데이터 클래스 및 모델 ---
@@ -83,7 +91,9 @@ data class RecommendationItem(
 
 // --- ViewModel: 앱의 모든 상태와 로직을 관리 ---
 
-class AppViewModel : ViewModel() {
+class AppViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val repository = DataRepository(application)
 
     // 현재 화면 상태
     private val _currentScreen = MutableLiveData(Screen.MAIN)
@@ -106,29 +116,13 @@ class AppViewModel : ViewModel() {
     val transactionType: LiveData<TransactionType> = _transactionType
 
     // 전체 거래 내역 리스트
-    private val _transactions = MutableLiveData<List<Transaction>>(emptyList())
+    private val _transactions = MutableLiveData<List<Transaction>>(repository.loadTransactions())
     val transactions: LiveData<List<Transaction>> = _transactions
 
-    // 항목 추천 딕셔너리 리스트 (샘플 데이터)
-    private val _recommendationDictionary = MutableLiveData(
-        listOf(
-            RecommendationItem(name = "커피", minPrice = 3000, maxPrice = 6000),
-            RecommendationItem(name = "점심", minPrice = 8000, maxPrice = 15000),
-            RecommendationItem(name = "교통비", minPrice = 1500, maxPrice = 3000),
-            RecommendationItem(name = "영화 티켓", minPrice = 15000, maxPrice = 20000),
-            RecommendationItem(name = "편의점", minPrice = 1000, maxPrice = 10000),
-            RecommendationItem(name = "저녁 식사", minPrice = 15000, maxPrice = 30000),
-            RecommendationItem(name = "책", minPrice = 10000, maxPrice = 25000),
-            RecommendationItem(name = "음료수", minPrice = 1000, maxPrice = 2500),
-            RecommendationItem(name = "택시", minPrice = 4800, maxPrice = 50000),
-            RecommendationItem(name = "월급", minPrice = 2000000, maxPrice = 5000000)
-        )
-    )
+    private val _recommendationDictionary = MutableLiveData(repository.loadRecommendationItems())
     val recommendationDictionary: LiveData<List<RecommendationItem>> = _recommendationDictionary
 
-    // 추천 항목 리스트
-    // 추천 항목 리스트
-    // 추천 항목 리스트
+
     val recommendedItems: LiveData<List<RecommendationItem>> = _inputValue.map { value ->
         val amount = value.toLongOrNull() ?: 0
         if (amount == 0L) return@map emptyList()
@@ -138,6 +132,7 @@ class AppViewModel : ViewModel() {
             ?.sortedBy { item -> abs(amount - (item.minPrice + item.maxPrice) / 2) }
             ?.take(3) ?: emptyList()
     }
+
 
     // 화면 변경
     fun navigateTo(screen: Screen) {
@@ -188,32 +183,44 @@ class AppViewModel : ViewModel() {
         val amount = _inputValue.value?.toLongOrNull() ?: 0
         if (amount > 0) {
             val newTransaction = Transaction(
+                id = UUID.randomUUID(), // ID는 여기서 생성
                 name = name,
                 amount = amount,
-                type = _transactionType.value ?: TransactionType.EXPENSE
+                type = _transactionType.value ?: TransactionType.EXPENSE,
+                timestamp = System.currentTimeMillis() // 타임스탬프는 여기서 생성
             )
             val updatedList = _transactions.value.orEmpty() + newTransaction
             _transactions.value = updatedList.sortedByDescending { it.timestamp }
+
+            // 3. 변경된 최신 목록을 저장소에 저장합니다.
+            repository.saveTransactions(updatedList)
+
             _inputValue.value = "0"
             _transactionType.value = TransactionType.EXPENSE
         }
     }
 
-    // 딕셔너리 항목 추가
     fun addDictionaryItem(item: RecommendationItem) {
-        _recommendationDictionary.value = _recommendationDictionary.value.orEmpty() + item
+        // ID가 없는 새 아이템이 들어오면 여기서 ID를 부여합니다.
+        val itemWithId = if (item.id.toString().startsWith("0000")) item.copy(id = UUID.randomUUID()) else item
+        val updatedList = _recommendationDictionary.value.orEmpty() + itemWithId
+        _recommendationDictionary.value = updatedList
+
+        repository.saveRecommendationItems(updatedList)
     }
 
-    // 딕셔너리 항목 수정
     fun updateDictionaryItem(item: RecommendationItem) {
-        _recommendationDictionary.value = _recommendationDictionary.value.orEmpty().map {
+        val updatedList = _recommendationDictionary.value.orEmpty().map {
             if (it.id == item.id) item else it
         }
+        _recommendationDictionary.value = updatedList
+        repository.saveRecommendationItems(updatedList)
     }
 
-    // 딕셔너리 항목 삭제
     fun deleteDictionaryItem(item: RecommendationItem) {
-        _recommendationDictionary.value = _recommendationDictionary.value.orEmpty().filterNot { it.id == item.id }
+        val updatedList = _recommendationDictionary.value.orEmpty().filterNot { it.id == item.id }
+        _recommendationDictionary.value = updatedList
+        repository.saveRecommendationItems(updatedList)
     }
 }
 
@@ -299,7 +306,15 @@ fun TopBar(viewModel: AppViewModel) {
                 Icon(Icons.Default.BrightnessMedium, contentDescription = stringResource(R.string.toggle_theme))
             }
             // 언어 변경 버튼
-            IconButton(onClick = { viewModel.toggleLanguage(context) }) {
+            IconButton(onClick = {
+                viewModel.toggleLanguage(context)
+                val activity = context as? Activity
+
+// 3. 만약 Activity가 맞다면, recreate() 함수를 호출합니다.
+                activity?.recreate()
+
+            })
+            {
                 Icon(Icons.Default.Translate, contentDescription = stringResource(R.string.toggle_language))
             }
         },
@@ -702,5 +717,60 @@ fun EditDictionaryItemDialog(
 fun DefaultPreview() {
     MyApplicationTheme {
         AppContent(viewModel())
+    }
+}
+
+
+// --- 데이터 저장을 전문적으로 담당하는 클래스 ---
+// (이전 설명에서는 별도 파일이었지만, 이해하기 쉽게 한 파일에 합쳤습니다.)
+class DataRepository(context: Context) {
+
+    private val gson = Gson()
+    private val prefs = context.getSharedPreferences("my_app_preferences", Context.MODE_PRIVATE)
+
+    // --- 거래 내역(Transaction) 관련 ---
+
+    fun saveTransactions(transactions: List<Transaction>) {
+        val jsonString = gson.toJson(transactions)
+        prefs.edit().putString("KEY_TRANSACTIONS", jsonString).apply()
+    }
+
+    fun loadTransactions(): List<Transaction> {
+        val jsonString = prefs.getString("KEY_TRANSACTIONS", null)
+        return if (jsonString != null) {
+            val type = object : TypeToken<List<Transaction>>() {}.type
+            gson.fromJson(jsonString, type)
+        } else {
+            emptyList() // 저장된 데이터가 없으면 빈 목록 반환
+        }
+    }
+
+    // --- 추천 항목(RecommendationItem) 관련 ---
+
+    fun saveRecommendationItems(items: List<RecommendationItem>) {
+        val jsonString = gson.toJson(items)
+        prefs.edit().putString("KEY_RECOMMENDATIONS", jsonString).apply()
+    }
+
+    fun loadRecommendationItems(): List<RecommendationItem> {
+        val jsonString = prefs.getString("KEY_RECOMMENDATIONS", null)
+        return if (jsonString != null) {
+            val type = object : TypeToken<List<RecommendationItem>>() {}.type
+            gson.fromJson(jsonString, type)
+        } else {
+            // 저장된 데이터가 없을 때만 기본 샘플 데이터를 제공
+            listOf(
+                RecommendationItem(name = "커피", minPrice = 3000, maxPrice = 6000),
+                RecommendationItem(name = "점심", minPrice = 8000, maxPrice = 15000),
+                RecommendationItem(name = "교통비", minPrice = 1500, maxPrice = 3000),
+                RecommendationItem(name = "영화 티켓", minPrice = 15000, maxPrice = 20000),
+                RecommendationItem(name = "편의점", minPrice = 1000, maxPrice = 10000),
+                RecommendationItem(name = "저녁 식사", minPrice = 15000, maxPrice = 30000),
+                RecommendationItem(name = "책", minPrice = 10000, maxPrice = 25000),
+                RecommendationItem(name = "음료수", minPrice = 1000, maxPrice = 2500),
+                RecommendationItem(name = "택시", minPrice = 4800, maxPrice = 50000),
+                RecommendationItem(name = "월급", minPrice = 2000000, maxPrice = 5000000)
+            )
+        }
     }
 }

@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("com.google.devtools.ksp") version "1.9.24-1.0.20"
+    id("com.google.devtools.ksp") version "2.2.21-2.0.4"
 }
 
 android {
@@ -59,6 +59,8 @@ dependencies {
 
 
     implementation("androidx.compose.material:material-icons-extended")
+    //Gson Translator
+    implementation("com.google.code.gson:gson:2.10.1") // <-- 이 줄을 추가하세요!
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -68,8 +70,6 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
-    val room_version = "2.6.1"
-    implementation("androidx.room:room-runtime:$room_version")
-    ksp("androidx.room:room-compiler:$room_version") // 어노테이션 프로세서를 KSP로 변경
-    implementation("androidx.room:room-ktx:$room_version") // 코루틴 지원
+
+// 코루틴 지원
 }
